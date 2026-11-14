@@ -10,15 +10,15 @@ You need ADB once, during setup. You can use a computer with wireless debugging,
 
 ## How do I allow or block an app later?
 
-Open Beeswax, enter your lock code, tap Unlock and flip the app's switch. New apps are blocked when you install them, and you allow them the same way. Think twice about an app marked "Detected as a browser". To get a new lock code, tap New code in the list.
+Open Beeswax, enter your lock code, tap Unlock and flip the app's switch. New apps are blocked when you install them, and you allow them the same way. Think twice about an app marked "Detected as a browser".
 
 ## What if I forget my lock code?
 
-Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have. If you need to install new apps or unblock apps, you'll need to factory reset your phone.
+To prevent losing access while preserving a strong lock, Beeswax offers an unlock timer that you can configure to reset your lock code after requesting and waiting a configurable period of time. Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have.
 
 ## What doesn't work with Beeswax?
 
-- You can't use Private Spaces or create other user profiles.
+- You can't use Private Spaces. Create other users through Beeswax, rather than Android Settings.
 - Links that would open in a browser don't open while Beeswax is locked, unless you've allowed a browser.
 - Apps with a built-in browser, like a help link or an in-app browser, may still open websites. The vast majority of websites do not allow this and it's recommended against by Android.
 
@@ -32,7 +32,7 @@ Yes. This app was developed with Opus 5.5. Its code was reviewed with Opus 5.5 a
 
 ## Is Beeswax secure?
 
-Beeswax uses the intended way to restrict devices on Android. It's tiny, requests one permission, and only does what it says. See more info in [PRIVACY.md](PRIVACY.md). You can verify you got the real Beeswax APK using the [SHA256 Signing Certificate](PRIVACY.md#verifying-a-release), and verify that its source code matches the released APK through [reproducible builds](PRIVACY.md#reproducible-builds).
+Beeswax uses the intended way to restrict devices on Android. It's tiny, requests one permission, and only does what it says. See more info in [Privacy and security](PRIVACY.md). You can verify you got the real Beeswax APK using the [SHA256 Signing Certificate](PRIVACY.md#verifying-a-release), and verify that its source code matches the released APK through [reproducible builds](PRIVACY.md#reproducible-builds).
 
 ## Is Beeswax privacy respecting?
 
@@ -40,7 +40,7 @@ Yes. There's no telemetry, one permission, and no network access.
 
 ## What are the risks?
 
-One risk with Beeswax, and device-owner apps in general, is the amount of trust you have to put in them. Device-owner apps are given a huge amount of permissions by Android. Beeswax uses only the few listed in [PRIVACY.md](PRIVACY.md#device-management-apis-used), and they can be undone. See [Risks to using Beeswax](PRIVACY.md#risks-to-using-beeswax) for more.
+One risk with Beeswax, and device-owner apps in general, is the amount of trust you have to put in them. Device-owner apps are given a huge amount of permissions by Android. Beeswax uses only the few listed in [Privacy and security](PRIVACY.md#device-management-apis-used), and they can be undone. There's no prompt for them like the notification permission in regular apps. See [Risks to using Beeswax](PRIVACY.md#risks-to-using-beeswax) for more.
 
 ## Will I always need ADB to activate Beeswax?
 

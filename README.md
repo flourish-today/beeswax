@@ -28,15 +28,14 @@
 <p align="center"><a href="SETUP.md#screenshots">More screenshots</a></p>
 
 
-## Why Beeswax?
+## Features
 
-- **Block the browser.** Android doesn't provide a built-in way to prevent access to the system browser. Beeswax blocks it, preventing access no matter what version of Android you use. Browsers start out blocked, and you choose whether to keep any.
-- **Block any app you pick.** Before you lock, Beeswax lists your apps and you choose which ones to block. Later, you can enter your lock code to block or allow apps.
-- **New apps are blocked.** Once Beeswax is locked, every app you install is blocked until you allow it with your lock code. Your apps keep updating as usual.
-- **Hard to bypass.** Beeswax's restrictions are locked using a random 16 character code that's generated when you lock it. You don't need to worry about restarts, safe mode, or ADB giving you access (ADB stays off unless you allow developer options). Without your lock code, the only way to use a blocked app or a new app is through a factory reset.
-- **More settings.** Optionally block factory reset from Settings, lock your private DNS, or allow developer options. Each needs your lock code to change.
-- **Full app updates** Unlike user profile based solutions, Beeswax allows you to update your apps without allowing the ability to install new ones.
-- **Privacy and security focused.** Beeswax has one permission, no network access, and no telemetry. It has reproducible builds so you can verify the source code corresponds to the distributed APK.
+- **Block any app** Pick any app, like Instagram or YouTube, and it disappears from your phone.
+- **Block browsers** Block any browser, even the built-in one that can't be uninstalled.
+- **Block new apps** Every app you install after locking is blocked to prevent bypassing.
+- **No easy bypass** Access requires the lock code, a factory reset, or a recovery wait you enabled beforehand.
+
+[More features](FEATURES.md)
 
 ## What you need
 

@@ -12,7 +12,7 @@ You need a phone with Android 13 or newer, and ADB on a computer or on the phone
     ```
     Beeswax now lists your apps.
 6.  **Turn off Developer options.** This also turns off ADB and is important for your device's security.
-7.  In Beeswax, switch off every app you want blocked. Rotating the phone resets the switches, so check them just before you lock.
+7.  In Beeswax, switch off every app you want blocked.
 8.  Tap Lock, save the lock code, type it back and tap Lock again. Save it somewhere you can't easily get to, or give it to someone you trust.
 
 Congrats, you're done! The apps you switched off can no longer be opened without your lock code. If something doesn't work, see the [FAQ](FAQ.md).

@@ -25,9 +25,7 @@ object About {
     fun setUp(activity: MainActivity) {
         val info = activity.packageManager.getPackageInfo(activity.packageName, PackageManager.PackageInfoFlags.of(0))
         activity.findViewById<TextView>(R.id.about_version).text =
-            "${activity.applicationInfo.loadLabel(activity.packageManager)} ${info.versionName}"
-        activity.findViewById<TextView>(R.id.email).text = EMAIL
-        activity.findViewById<TextView>(R.id.monero_address).text = MONERO
+            "${activity.applicationInfo.loadLabel(activity.packageManager)} ${info.versionName} (${info.longVersionCode})"
         // The license file wraps its lines for a wide screen, so its paragraphs are rejoined to fit the phone.
         val license = activity.resources.openRawResource(R.raw.apache_2_0).bufferedReader().use { it.readText() }
         activity.findViewById<TextView>(R.id.apache_license).text = license.trim().split(Regex("\n\\s*\n"))
@@ -41,9 +39,10 @@ object About {
             R.id.email_open to "mailto:$EMAIL",
             R.id.simplex to SIMPLEX,
             R.id.star to REPO,
+            R.id.source_mirror to "https://code.getflourish.org/flourish-today/Beeswax",
+            R.id.changelog to "$REPO/releases",
             R.id.open_wallet to "monero:$MONERO",
             R.id.learn_monero to "$SITE/monero/",
-            R.id.manifesto to "https://www.activism.net/cypherpunk/manifesto.html",
         )
         for ((id, link) in links) activity.findViewById<Button>(id).setOnClickListener { confirm(activity, link) }
     }

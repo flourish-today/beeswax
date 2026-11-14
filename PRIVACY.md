@@ -8,16 +8,19 @@ Beeswax uses its Device Owner capability responsibly by only using these few Dev
 
 | What it does | Android API | When |
 |---|---|---|
-| Blocks adding new users, since a new user would have its own browser and app store | `DevicePolicyManager.addUserRestriction` with `DISALLOW_ADD_USER` | When you lock |
+| Blocks adding unmanaged users through Settings | `DevicePolicyManager.addUserRestriction` with `DISALLOW_ADD_USER` | When you lock |
 | Blocks debugging features, so ADB can't be used to get around the lock (release builds only) | `DevicePolicyManager.addUserRestriction` with `DISALLOW_DEBUGGING_FEATURES` | When you lock, and when you turn off Allow developer options |
 | Allows debugging features while locked | `DevicePolicyManager.clearUserRestriction` with `DISALLOW_DEBUGGING_FEATURES` | When you turn on Allow developer options |
 | Blocks factory reset from Settings | `DevicePolicyManager.addUserRestriction` and `clearUserRestriction` with `DISALLOW_FACTORY_RESET` | When you turn Block factory reset on or off |
 | Locks private DNS | `DevicePolicyManager.addUserRestriction` and `clearUserRestriction` with `DISALLOW_CONFIG_PRIVATE_DNS` | When you turn Lock private DNS on or off |
-| Blocks and allows apps | `DevicePolicyManager.setApplicationHidden` | Blocks the apps switched off in the list (browsers by default) when you lock, an app installed while locked, and an app you switch off in the list. Blocks them again whenever Guard starts, for example after a restart. Allows an app when you switch it on in the list, and every app when you tap Deactivate |
+| Creates a user managed by Beeswax with a copy of the current lock code's salt and hash | `DevicePolicyManager.createAndManageUser` | With the code, from More settings in the Owner profile |
+| Turns on automatic time and time zone, and prevents clock changes | `DevicePolicyManager.setAutoTimeEnabled`, `setAutoTimeZoneEnabled`, `addUserRestriction` and `clearUserRestriction` with `DISALLOW_CONFIG_DATE_TIME` | When you change Lock date and time in Schedule in the Owner profile |
+| Blocks Private Space in a managed user on Android 15 and newer | `DevicePolicyManager.addUserRestriction` with `DISALLOW_ADD_PRIVATE_PROFILE` | When the user first starts |
+| Blocks and allows apps | `DevicePolicyManager.setApplicationHidden` | Blocks the apps switched off in the list (browsers by default) when you lock, an app installed while locked, and an app you switch off in the list. Blocks them again whenever Guard starts, for example after a restart. Also blocks and allows scheduled apps at the chosen times. Allows an app when you switch it on in the list, and every app when you tap Deactivate |
 | Stops a blocked built-in app from being uninstalled, so Settings' "Uninstall updates" can't bring back an unblocked copy | `DevicePolicyManager.setUninstallBlocked` | When a built-in app is blocked. Lifted when you allow it, and for every app when you tap Deactivate |
 | Turns Guard, Beeswax's background service that watches for new apps, on and off | `PackageManager.setComponentEnabledSetting` (Guard only) | On when you lock, off when you tap Deactivate |
 | Allows adding new users again | `DevicePolicyManager.clearUserRestriction` with `DISALLOW_ADD_USER` | When you tap Deactivate |
-| Allows debugging features, factory reset and private DNS changes again | `DevicePolicyManager.clearUserRestriction` with `DISALLOW_DEBUGGING_FEATURES`, `DISALLOW_FACTORY_RESET` and `DISALLOW_CONFIG_PRIVATE_DNS` | When you tap Deactivate |
+| Allows debugging features, factory reset, private DNS and clock changes again | `DevicePolicyManager.clearUserRestriction` with `DISALLOW_DEBUGGING_FEATURES`, `DISALLOW_FACTORY_RESET`, `DISALLOW_CONFIG_PRIVATE_DNS` and `DISALLOW_CONFIG_DATE_TIME` | When you tap Deactivate |
 | Turns the backup service on, which Android turns off when a device owner is set | `DevicePolicyManager.setBackupServiceEnabled` | Whenever Beeswax's screen opens or changes |
 | Removes itself as device owner | `DevicePolicyManager.clearDeviceOwnerApp` | When you tap Deactivate |
 
@@ -36,18 +39,18 @@ These only read, and change nothing. Before you lock, Beeswax uses only these to
 | Shows More settings' switches as Android has them | `DevicePolicyManager.getUserRestrictions` | When More settings shows |
 | Reads the private DNS set in Settings, so Lock private DNS can show it and refuse when none is set | `DevicePolicyManager.getGlobalPrivateDnsMode`, `DevicePolicyManager.getGlobalPrivateDnsHost` | When More settings shows |
 | Finds every app whose uninstall Beeswax blocked, to lift it | `DevicePolicyManager.isUninstallBlocked` | When you tap Deactivate |
-| Checks for other users, which Beeswax can't lock with | `DevicePolicyManager.getSecondaryUsers` | When you tap Lock |
-| Checks that Beeswax is the device owner | `DevicePolicyManager.isDeviceOwnerApp` | Whenever Beeswax's screen opens or changes |
+| Checks for other users before the first Lock | `DevicePolicyManager.getSecondaryUsers` | When you tap Lock |
+| Checks that Beeswax is the device owner | `DevicePolicyManager.isDeviceOwnerApp`, `isProfileOwnerApp` | Whenever Beeswax's screen opens or changes |
 
 ## Risks to using Beeswax
 
--   Beeswax is a device-owner app, which gives it powers far beyond a normal app. Beeswax uses only the few listed above, but a future update signed with the same key could, for example, give Beeswax the ability to wipe your device.
--   If the lock code is lost while Beeswax is locked, the only way to unblock apps or allow new apps is a factory reset.
--   By using Beeswax, you're using Android in a non-standard way. Beeswax blocks browsers by default, including the built-in browser (Vanadium on GrapheneOS). GrapheneOS recognizes device owners as the standard way to manage devices, and ADB is currently the only way to set one up. However, GrapheneOS advises against apps that use these APIs to "disallow a bunch of functionality." [1]
+- Beeswax is a device-owner app, which gives it powers far beyond a normal app. Beeswax uses only the few listed above, but a future update signed with the same key could, for example, give Beeswax the ability to wipe your device.
+- If the lock code is lost while Beeswax is locked, unblocking apps or allowing new apps requires a factory reset, unless Recovery wait was enabled beforehand. A recovery wait deliberately allows access without the code once the wait ends.
+- By using Beeswax, you're using Android in a non-standard way. Beeswax blocks browsers by default, including the built-in browser (Vanadium on GrapheneOS). GrapheneOS recognizes device owners as the standard way to manage devices, and ADB is currently the only way to set one up. However, GrapheneOS advises against apps that use these APIs to "disallow a bunch of functionality." [1]
 
 ## Verifying a release
 
-Use [AppVerifier](https://github.com/soupslurpr/AppVerifier) with the package name and hash below. Beeswax has been [domain verified](https://github.com/privacyguides/verified-apps/issues/7308) and [submitted](https://github.com/privacyguides/verified-apps/issues/7307) to Privacy Guides' [verified-apps-android](https://github.com/privacyguides/verified-apps-android) database.
+Use an [App Verifier](https://github.com/privacyguides/verified-apps-android)  with the package name and hash below. Beeswax has been [domain verified](https://github.com/privacyguides/verified-apps/issues/7308) and [submitted](https://github.com/privacyguides/verified-apps/issues/7307) to Privacy Guides' [verified-apps](https://github.com/privacyguides/verified-apps) database.
 
 ```
 org.getflourish.beeswax
@@ -69,17 +72,17 @@ You need:
    ```
    git clone https://github.com/flourish-today/beeswax.git
    cd beeswax
-   git checkout v1.02
+   git checkout v1.03
    gradle --no-daemon :app:assembleRelease -Pandroid.aapt2FromMavenOverride="$ANDROID_HOME/build-tools/37.0.0/aapt2"
    ```
 
-2. Download `Beeswax-1.02.apk` from the [v1.02 release](https://github.com/flourish-today/beeswax/releases/tag/v1.02) into the `beeswax` folder.
+2. Download `Beeswax-1.03.apk` from the [v1.03 release](https://github.com/flourish-today/beeswax/releases/tag/v1.03) into the `beeswax` folder.
 
 3. Unpack both APKs and compare them:
 
    ```
    mkdir rel mine
-   unzip -q Beeswax-1.02.apk -d rel
+   unzip -q Beeswax-1.03.apk -d rel
    unzip -q app/build/outputs/apk/release/app-release-unsigned.apk -d mine
    diff -rq rel mine && echo MATCH
    ```

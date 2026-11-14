@@ -11,11 +11,13 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.UserManager
 import android.provider.Settings
 import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.view.inputmethod.InputMethodManager
+import java.util.Calendar
 
 // The lock. While locked, the apps blocked at Lock (by default the browsers it finds) and the apps hidden
 // from the list stay hidden, and every app installed after that is hidden until it's shown. Updates keep
@@ -25,6 +27,11 @@ object Lock {
     private const val BLOCKED = "blocked"
     private const val APPROVED = "approved"
     private const val QUARANTINED = "quarantined"
+    private const val SCHEDULED = "scheduled"
+    private const val FROM = "from"
+    private const val UNTIL = "until"
+    private const val DAYS = "days"
+    private const val RECOVERY_MINUTES = "recovery_minutes"
 
     fun isLocked(context: Context) = prefs(context).getBoolean(LOCKED, false)
 
@@ -43,9 +50,28 @@ object Lock {
     fun lock(context: Context, code: String, plan: Map<String, Boolean>) {
         if (isLocked(context)) return
         Code.save(context, code)
+        lock(context, plan)
+    }
+
+    // In a user made by Create user, on its first start, with the copy of the code it was created with.
+    @Synchronized
+    fun lockUser(context: Context, salt: String, hash: String) {
+        if (isLocked(context)) return
+        Code.paste(context, salt, hash)
+        lock(context, emptyMap())
+    }
+
+    // With the code. The new user has no browser, since Android leaves out the built-in apps a user can do
+    // without, and Beeswax locks it on its first start. Allowed even though Lock blocks new users: Android
+    // lets a device owner create one anyway.
+    @Synchronized
+    fun createUser(context: Context, name: String) {
+        if (isLocked(context)) dpm(context).createAndManageUser(admin(context), name, admin(context), Code.copy(context), 0)
+    }
+
+    private fun lock(context: Context, plan: Map<String, Boolean>) {
         val blocked = browsers(context) - plan.filterValues { it }.keys + plan.filterValues { !it }.keys - essential(context)
         val approved = userApps(context).filter { it.packageName !in blocked }.map { fingerprint(it) }.toSet()
-        // No new users, since a new user would have a browser and an app store.
         for (restriction in restrictions(context)) dpm(context).addUserRestriction(admin(context), restriction)
         prefs(context).edit()
             .putBoolean(LOCKED, true)
@@ -65,8 +91,9 @@ object Lock {
         prefs(context).edit().putBoolean(LOCKED, false).commit()
         setGuard(context, false)
         // Also More settings' restrictions, and the debugging block even if Allow developer options lifted it.
-        val all = listOf(UserManager.DISALLOW_FACTORY_RESET, UserManager.DISALLOW_CONFIG_PRIVATE_DNS) +
-            restrictions(context) + UserManager.DISALLOW_DEBUGGING_FEATURES
+        val all = listOf(
+            UserManager.DISALLOW_FACTORY_RESET, UserManager.DISALLOW_CONFIG_PRIVATE_DNS, UserManager.DISALLOW_CONFIG_DATE_TIME,
+        ) + restrictions(context) + UserManager.DISALLOW_DEBUGGING_FEATURES
         for (restriction in all) dpm(context).clearUserRestriction(admin(context), restriction)
         // Every hidden app, not only the saved lists, so nothing stays hidden if a list was lost.
         val packages = context.packageManager.getInstalledPackages(
@@ -99,6 +126,7 @@ object Lock {
         if (!isLocked(context) || packageName in essential(context)) return
         prefs(context).edit()
             .putStringSet(BLOCKED, blocked(context) + packageName)
+            .putStringSet(SCHEDULED, set(context, SCHEDULED) - packageName)
             .putStringSet(QUARANTINED, quarantined(context) - packageName)
             .commit()
         block(context, packageName)
@@ -118,6 +146,70 @@ object Lock {
     }
 
     fun hasRestriction(context: Context, restriction: String) = dpm(context).getUserRestrictions(admin(context)).getBoolean(restriction)
+
+    // The recovery wait in minutes, or 0 for off. Changing it ends a wait that's running.
+    fun recoveryMinutes(context: Context) = prefs(context).getInt(RECOVERY_MINUTES, 0)
+
+    @Synchronized
+    fun setRecoveryMinutes(context: Context, minutes: Int) {
+        if (!isLocked(context)) return
+        prefs(context).edit().putInt(RECOVERY_MINUTES, minutes).commit()
+        Code.cancelWait(context)
+    }
+
+    // The schedule: the apps on it are blocked from one time to the other, in minutes after midnight, on
+    // the chosen days. Apps blocked with the code aren't the schedule's to block or allow.
+    fun scheduled(context: Context) = set(context, SCHEDULED) - blocked(context) - quarantined(context)
+
+    fun schedulable(context: Context) = listed(context) - blocked(context) - quarantined(context)
+
+    fun from(context: Context) = prefs(context).getInt(FROM, 22 * 60)
+
+    fun until(context: Context) = prefs(context).getInt(UNTIL, 7 * 60)
+
+    // One bit a day, Sunday the lowest. Every day until some are picked.
+    fun days(context: Context) = prefs(context).getInt(DAYS, 127)
+
+    @Synchronized
+    fun setSchedule(context: Context, from: Int, until: Int, days: Int) {
+        if (!isLocked(context)) return
+        prefs(context).edit().putInt(FROM, from).putInt(UNTIL, until).putInt(DAYS, days).commit()
+        applySchedule(context)
+    }
+
+    @Synchronized
+    fun setScheduled(context: Context, packageName: String, on: Boolean) {
+        if (!isLocked(context)) return
+        val wasBlocking = packageName in scheduled(context)
+        val apps = set(context, SCHEDULED)
+        prefs(context).edit().putStringSet(SCHEDULED, if (on) apps + packageName else apps - packageName).commit()
+        // Taken off while the schedule was blocking it.
+        if (!on && wasBlocking) setHidden(context, packageName, false)
+        applySchedule(context)
+    }
+
+    // Run by Guard every minute the screen is on, and after each change. Never hides an essential app.
+    // The same from and until means never. A block that runs past midnight belongs to the day it starts,
+    // so after midnight it's yesterday that has to be a chosen day.
+    @Synchronized
+    fun applySchedule(context: Context) {
+        if (!isLocked(context)) return
+        val apps = scheduled(context)
+        if (apps.isEmpty()) return
+        val calendar = Calendar.getInstance()
+        val now = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+        val today = calendar.get(Calendar.DAY_OF_WEEK) - 1
+        val from = from(context)
+        val until = until(context)
+        val days = days(context)
+        val started = if (from > until && now < until) (today + 6) % 7 else today
+        val inside = (if (from <= until) now in from until until else now >= from || now < until) && days shr started and 1 == 1
+        for (packageName in apps) {
+            if (isHidden(context, packageName) == inside) continue
+            if (inside && packageName in essential(context)) continue
+            setHidden(context, packageName, inside)
+        }
+    }
 
     // The list: every installed app that isn't part of the system, every browser and every app with a
     // home-screen icon (built-in ones too, so they can be blocked) and anything Beeswax hid, hidden or not.
@@ -172,13 +264,17 @@ object Lock {
 
     private fun check(context: Context, info: PackageInfo) {
         if (fingerprint(info) in set(context, APPROVED)) return
+        // Built-in apps are only ever new in a user Beeswax created.
+        if (isSystem(info.applicationInfo) && info.packageName in essential(context)) return
         prefs(context).edit().putStringSet(QUARANTINED, quarantined(context) + info.packageName).commit()
         setHidden(context, info.packageName, true)
     }
 
     // An app's name plus when it was first installed. Uninstalling an allowed app and installing
-    // something else under the same name changes the time, so the new app is quarantined.
-    private fun fingerprint(info: PackageInfo) = "${info.packageName}:${info.firstInstallTime}"
+    // something else under the same name changes the time, so the new app is quarantined. A built-in
+    // app's name can't be taken by another app, so its name is enough.
+    private fun fingerprint(info: PackageInfo) =
+        "${info.packageName}:${if (isSystem(info.applicationInfo)) 0 else info.firstInstallTime}"
 
     // Browsers: apps that call themselves a browser, plus installed apps that can open any web link.
     // Built-in apps that open web links without being browsers, like Carrier Communications for
@@ -204,14 +300,23 @@ object Lock {
         return context.packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
     }
 
-    // Installed, visible apps that aren't part of the system and aren't Beeswax. System apps come
-    // only with OS updates, so they're never quarantined; browsers among them are hidden by name.
+    // Installed, visible apps that aren't part of the system and aren't Beeswax. In the Owner profile system
+    // apps come only with OS updates, so they're never quarantined; browsers among them are hidden by name.
+    // In a user Beeswax created, Owner can add a built-in app with Install available apps, so there the
+    // built-in apps with a home-screen icon count too.
     private fun userApps(context: Context) = context.packageManager
         .getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
         .filter { isUserApp(context, it) }
 
-    private fun isUserApp(context: Context, info: PackageInfo) = info.packageName != context.packageName &&
-        !isSystem(info.applicationInfo)
+    private fun isUserApp(context: Context, info: PackageInfo): Boolean {
+        if (info.packageName == context.packageName) return false
+        if (!isSystem(info.applicationInfo)) return true
+        if (!inUser(context)) return false
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(info.packageName)
+        return activities(context, launcher, PackageManager.MATCH_UNINSTALLED_PACKAGES).isNotEmpty()
+    }
+
+    private fun inUser(context: Context) = !context.getSystemService(UserManager::class.java).isSystemUser
 
     private fun isSystem(info: ApplicationInfo?) = info == null || info.flags and ApplicationInfo.FLAG_SYSTEM != 0
 
@@ -221,10 +326,15 @@ object Lock {
         null
     }
 
-    private fun restrictions(context: Context) = if (isTestBuild(context)) {
-        listOf(UserManager.DISALLOW_ADD_USER)
-    } else {
-        listOf(UserManager.DISALLOW_ADD_USER, UserManager.DISALLOW_DEBUGGING_FEATURES)
+    // No new users, since a new user would have a browser and an app store. In a user Beeswax created,
+    // Android allows no new users anyway, and a Private Space (Android 15 and later) is blocked for the same reason.
+    private fun restrictions(context: Context) = when {
+        inUser(context) -> listOfNotNull(
+            UserManager.DISALLOW_DEBUGGING_FEATURES,
+            if (Build.VERSION.SDK_INT >= 35) UserManager.DISALLOW_ADD_PRIVATE_PROFILE else null,
+        )
+        isTestBuild(context) -> listOf(UserManager.DISALLOW_ADD_USER)
+        else -> listOf(UserManager.DISALLOW_ADD_USER, UserManager.DISALLOW_DEBUGGING_FEATURES)
     }
 
     // Never listed or blocked: Beeswax and enabled keyboards, so the code can always be typed, and the built-in

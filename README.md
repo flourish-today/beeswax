@@ -25,7 +25,7 @@
 </table>
 </div>
 
-<p align="center"><a href="SETUP.md#screenshots">More screenshots</a></p>
+<p align="center"><a href="https://beeswax.getflourish.org/#screenshots">More screenshots</a></p>
 
 
 ## Features

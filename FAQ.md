@@ -14,7 +14,7 @@ Open Beeswax, enter your lock code, tap Unlock and flip the app's switch. New ap
 
 ## What if I forget my lock code?
 
-To prevent losing access while preserving a strong lock, Beeswax offers an unlock timer that you can configure to reset your lock code after requesting and waiting a configurable period of time. Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have.
+To prevent losing access while preserving a strong lock, Beeswax offers a recovery wait. Turn it on in More settings while you still have your code. If you lose the code, tap Lost code to start the wait. When it ends, you can open the list without the code and set a new one. Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have.
 
 ## What doesn't work with Beeswax?
 

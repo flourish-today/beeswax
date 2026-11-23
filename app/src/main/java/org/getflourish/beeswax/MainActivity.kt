@@ -3,6 +3,7 @@ package org.getflourish.beeswax
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.Dialog
 import android.app.TimePickerDialog
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
@@ -15,6 +16,7 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.os.UserManager
 import android.text.InputType
+import android.text.TextUtils
 import android.text.format.DateFormat
 import android.view.Gravity
 import android.view.View
@@ -41,8 +43,8 @@ class MainActivity : Activity() {
     private lateinit var dpm: DevicePolicyManager
     private lateinit var admin: ComponentName
 
-    // Device owner in the Owner profile. In a user made by Create user, Beeswax is that user's profile owner
-    // instead: the same lock and list, without Deactivate and the settings only a device owner has.
+    // In a user made by Create user, Beeswax is that user's profile owner, which can't change the settings
+    // only a device owner has.
     private var deviceOwner = false
 
     // Set only by typing the right code. Leaving Beeswax keeps it, so apps can be installed and then allowed;
@@ -50,15 +52,15 @@ class MainActivity : Activity() {
     private var listOpen = false
     private val switches = mutableListOf<Switch>()
 
-    // The screen shows one page at a time. More settings and Schedule are pages of the open list, and close
-    // with it. About needs no code, and Licenses opens from it. Back returns to the page before.
+    // More settings and Schedule are pages of the open list, so they close with it.
     private enum class Page { MAIN, MORE, SCHEDULE, ABOUT, LICENSES }
     private var page = Page.MAIN
     private var backRegistered = false
+    private var dialog: Dialog? = null
     private val back = OnBackInvokedCallback { goBack() }
 
-    // The switches changed before the first Lock: package name to on. Only a plan, kept in memory and applied
-    // by Lock. Cleared once locked or no longer device owner.
+    // Package name to switched on, for the switches changed before the first Lock. Only a plan, kept in memory
+    // and applied by Lock.
     private val plan = mutableMapOf<String, Boolean>()
 
     // Refresh as soon as Guard quarantines an app, an app is uninstalled, or Beeswax becomes
@@ -75,9 +77,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.activity_main)
-        // Release builds block screenshots and screen recording, so the code can't be recorded as it's typed.
-        // Test builds allow them, for testing.
-        if (!Lock.isTestBuild(this)) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        // No screenshots or screen recording, so the code can't be recorded as it's typed.
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         dpm = getSystemService(DevicePolicyManager::class.java)
         admin = ComponentName(this, Receiver::class.java)
         // Android draws apps edge to edge, so keep the content clear of the system bars and keyboard.
@@ -134,8 +135,6 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
-    // The screen turning off, or Lock at the top of the open list, closes the list and clears the code.
-    // Beeswax stays locked. Reopening Beeswax refreshes the screen.
     private fun closeList() {
         listOpen = false
         page = Page.MAIN
@@ -155,17 +154,15 @@ class MainActivity : Activity() {
         val owner = deviceOwner || dpm.isProfileOwnerApp(packageName)
         if (!owner) plan.clear()
         if (owner) {
-            val backupsOn = try {
-                dpm.setBackupServiceEnabled(admin, true)
-                true
-            } catch (e: Exception) {
-                false
-            }
-            findViewById<View>(R.id.backups_failed).visibility = if (backupsOn) View.GONE else View.VISIBLE
+            findViewById<View>(R.id.backups_failed).visibility = shownIf(!Lock.activate(this))
             refreshLock()
         }
         if ((page == Page.MORE || page == Page.SCHEDULE) && !(owner && listOpen)) page = Page.MAIN
         val main = page == Page.MAIN
+        // Only the Owner profile can be set up. A user made by Create user can't be locked again after Deactivate.
+        val inUser = !getSystemService(UserManager::class.java).isSystemUser
+        findViewById<TextView>(R.id.status).setText(if (inUser) R.string.status_in_user else R.string.status_not_device_owner)
+        findViewById<View>(R.id.setup_guide_from_setup).visibility = shownIf(!inUser)
         findViewById<View>(R.id.status).visibility = shownIf(!owner && main)
         findViewById<View>(R.id.setup_controls).visibility = shownIf(!owner && main)
         findViewById<View>(R.id.owner_controls).visibility = shownIf(owner && main)
@@ -184,9 +181,22 @@ class MainActivity : Activity() {
 
     // Each switch shows Android's own state, so nothing new is saved. Changes need the open list, so the code.
     private fun refreshMore() {
+        // Lost code recovery stays off until a wait is saved in the dialog its switch opens.
         val wait = Lock.recoveryMinutes(this)
-        findViewById<Button>(R.id.recovery_wait).text =
-            getString(R.string.recovery_wait, if (wait == 0) getString(R.string.recovery_off) else duration(wait))
+        val delayed = findViewById<Switch>(R.id.recovery_switch)
+        delayed.setOnCheckedChangeListener(null)
+        delayed.isChecked = wait > 0
+        delayed.setOnCheckedChangeListener { _, on ->
+            if (on || !listOpen) refresh()
+            if (on && listOpen) showRecoveryWait()
+            if (!on && listOpen) inBackground {
+                Lock.setRecoveryMinutes(this, 0)
+                null
+            }
+        }
+        val button = findViewById<Button>(R.id.recovery_wait)
+        button.visibility = shownIf(wait > 0)
+        button.text = getString(R.string.recovery_wait, duration(wait))
         findViewById<View>(R.id.owner_settings).visibility = shownIf(deviceOwner)
         if (!deviceOwner) return
         val reset = UserManager.DISALLOW_FACTORY_RESET
@@ -209,24 +219,25 @@ class MainActivity : Activity() {
             Lock.setRestriction(this, dns, on)
             null
         }
-        val note = getString(R.string.lock_private_dns_note)
+        val note = getText(R.string.lock_private_dns_note)
         findViewById<TextView>(R.id.private_dns_note).text =
-            if (dnsLocked && host != null) note + "\n\n" + getString(R.string.private_dns_kept, host) else note
+            if (dnsLocked && host != null) paragraphs(listOf(note, getString(R.string.private_dns_kept, host))) else note
         setUpSwitch(R.id.allow_developer_options, !Lock.hasRestriction(this, debugging)) {
             Lock.setRestriction(this, debugging, !it)
             null
         }
     }
 
-    // Two times, each set with Android's own time picker, and the days, then the apps not blocked with the
-    // code, under the main list's headings: switched off, an app is blocked between the two times.
     private fun refreshSchedule() {
         // The schedule goes by the phone's clock, which only the device owner can lock, for every user.
         // Automatic time and time zone first, so the clock that's locked is the network's.
         val time = UserManager.DISALLOW_CONFIG_DATE_TIME
         val clockLocked = getSystemService(UserManager::class.java).hasUserRestriction(time)
         findViewById<View>(R.id.lock_date_time).visibility = shownIf(deviceOwner)
-        findViewById<View>(R.id.schedule_clock_note).visibility = shownIf(!deviceOwner && !clockLocked)
+        findViewById<View>(R.id.lock_date_time_note).visibility = shownIf(deviceOwner)
+        val clockNote = findViewById<TextView>(R.id.schedule_clock_note)
+        clockNote.visibility = shownIf(!deviceOwner)
+        clockNote.setText(if (clockLocked) R.string.schedule_clock_locked else R.string.schedule_clock_note)
         if (deviceOwner) setUpSwitch(R.id.lock_date_time, clockLocked) { on ->
             if (on) {
                 dpm.setAutoTimeEnabled(admin, true)
@@ -235,22 +246,32 @@ class MainActivity : Activity() {
             Lock.setRestriction(this, time, on)
             null
         }
+        val on = Lock.isScheduleOn(this)
+        setUpSwitch(R.id.schedule_switch, on) {
+            Lock.setScheduleOn(this, it)
+            null
+        }
         val from = Lock.from(this)
         val until = Lock.until(this)
         val days = Lock.days(this)
         setUpTime(R.id.schedule_from, R.string.schedule_from, from) { Lock.setSchedule(this, it, until, days) }
         setUpTime(R.id.schedule_until, R.string.schedule_until, until) { Lock.setSchedule(this, from, it, days) }
         setUpDays(days) { Lock.setSchedule(this, from, until, it) }
+        for (id in listOf(R.id.schedule_from, R.id.schedule_until, R.id.schedule_days)) findViewById<View>(id).isEnabled = on
         val list = findViewById<LinearLayout>(R.id.schedule_list)
         list.removeAllViews()
-        val (blocked, allowed) = Lock.schedulable(this).sortedBy { Lock.label(this, it).toString().lowercase() }
+        val schedulable = Lock.schedulable(this)
+        val note = getString(R.string.schedule_note)
+        findViewById<TextView>(R.id.schedule_note).text =
+            if (schedulable.size < Lock.listed(this).size) note + " " + getString(R.string.schedule_blocked_note) else note
+        val (blocked, allowed) = schedulable.sortedBy { Lock.label(this, it).toString().lowercase() }
             .partition { it in Lock.scheduled(this) }
         for ((heading, rows) in listOf(R.string.list_hidden to blocked, R.string.list_visible to allowed)) {
             addHeading(list, heading)
             for (packageName in rows) {
-                addRow(list, packageName, packageName, rows === allowed) { on ->
+                addRow(list, packageName, packageName, rows === allowed, enabled = on) { checked ->
                     if (listOpen) inBackground {
-                        Lock.setScheduled(this, packageName, !on)
+                        Lock.setScheduled(this, packageName, !checked)
                         null
                     } else {
                         refresh()
@@ -260,7 +281,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // A time is minutes after midnight, shown the way the phone shows times.
+    // Minutes after midnight.
     private fun setUpTime(id: Int, label: Int, minutes: Int, change: (Int) -> Unit) {
         val time = Calendar.getInstance()
         time.set(Calendar.HOUR_OF_DAY, minutes / 60)
@@ -268,12 +289,12 @@ class MainActivity : Activity() {
         val button = findViewById<Button>(id)
         button.text = getString(label, DateFormat.getTimeFormat(this).format(time.time))
         button.setOnClickListener {
-            TimePickerDialog(this, { _, hour, minute ->
+            show(TimePickerDialog(this, { _, hour, minute ->
                 if (listOpen) inBackground {
                     change(hour * 60 + minute)
                     null
                 }
-            }, minutes / 60, minutes % 60, DateFormat.is24HourFormat(this)).show()
+            }, minutes / 60, minutes % 60, DateFormat.is24HourFormat(this)))
         }
     }
 
@@ -318,10 +339,6 @@ class MainActivity : Activity() {
         if (locked) plan.clear() else listOpen = false
         findViewById<TextView>(R.id.lock_status).setText(if (locked) R.string.lock_on else R.string.lock_off)
         findViewById<View>(R.id.lock_status).visibility = shownIf(!listOpen)
-        findViewById<View>(R.id.lock_test_note).visibility = shownIf(Lock.isTestBuild(this))
-        // Before the first Lock, the list shows as the plan for it. While locked, only the code field shows
-        // until the right code opens the list. Deactivate shows before the first Lock and in the open list.
-        // About sits beside each of them.
         findViewById<View>(R.id.close_list_row).visibility = shownIf(listOpen)
         findViewById<View>(R.id.lock_row).visibility = shownIf(!locked)
         findViewById<View>(R.id.code).visibility = shownIf(locked && !listOpen)
@@ -329,9 +346,10 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.new_code).visibility = shownIf(listOpen)
         findViewById<View>(R.id.more_settings).visibility = shownIf(listOpen)
         findViewById<View>(R.id.schedule_open).visibility = shownIf(listOpen)
-        // A user made by Create user has no Deactivate: deleting the user in the Owner profile is its way out.
-        findViewById<View>(R.id.deactivate).visibility = shownIf(deviceOwner && (!locked || listOpen))
-        refreshRecovery(locked && !listOpen && Lock.recoveryMinutes(this) > 0)
+        findViewById<View>(R.id.deactivate).visibility = shownIf(!locked || listOpen)
+        // A finished wait stays until a new code is saved, even if Lost code recovery was turned off meanwhile.
+        val recovery = Lock.recoveryMinutes(this) > 0 || Code.waitLeft(this) == 0L
+        refreshRecovery(locked && !listOpen && recovery)
         val list = findViewById<LinearLayout>(R.id.app_list)
         list.removeAllViews()
         switches.clear()
@@ -369,8 +387,6 @@ class MainActivity : Activity() {
         }
     }
 
-    // On the locked screen, only when the recovery wait is turned on: Lost code starts the wait, and while
-    // it runs the time left shows with a way to cancel it.
     private fun refreshRecovery(shown: Boolean) {
         findViewById<View>(R.id.recovery_row).visibility = shownIf(shown)
         if (!shown) return
@@ -405,7 +421,7 @@ class MainActivity : Activity() {
 
     private fun duration(minutes: Int) = getString(R.string.duration, minutes / 1440, minutes / 60 % 24, minutes % 60)
 
-    // In More settings, so with the code. Days, hours and minutes, each a number field under its name.
+    // In More settings, so with the code.
     private fun showRecoveryWait() {
         val wait = Lock.recoveryMinutes(this)
         val row = LinearLayout(this)
@@ -425,7 +441,6 @@ class MainActivity : Activity() {
         }
         show(AlertDialog.Builder(this)
             .setTitle(R.string.recovery_wait_title)
-            .setMessage(R.string.recovery_wait_message)
             .setView(row)
             .setPositiveButton(R.string.code_save) { _, _ ->
                 val (days, hours, minutes) = fields.map { it.text.toString().toIntOrNull()?.coerceAtMost(999) ?: 0 }
@@ -439,7 +454,7 @@ class MainActivity : Activity() {
             .setNegativeButton(android.R.string.cancel, null))
     }
 
-    // In More settings, so with the code. The new user shows up in Settings → System → Users.
+    // In More settings, so with the code.
     private fun showCreateUser() {
         val field = EditText(this)
         field.setHint(R.string.user_name)
@@ -463,6 +478,10 @@ class MainActivity : Activity() {
             .setNegativeButton(android.R.string.cancel, null))
     }
 
+    // Keeps the strings' bold text, which joining them as plain strings would drop.
+    private fun paragraphs(texts: List<CharSequence>): CharSequence =
+        TextUtils.concat(*texts.flatMap { listOf("\n\n", it) }.drop(1).toTypedArray())
+
     private fun shownIf(shown: Boolean) = if (shown) View.VISIBLE else View.GONE
 
     private fun addHeading(list: LinearLayout, text: Int) {
@@ -473,8 +492,7 @@ class MainActivity : Activity() {
         list.addView(heading)
     }
 
-    // One app: its icon, its name with its details below (its package name, and any notes), and its switch.
-    private fun addRow(list: LinearLayout, packageName: String, text: String, on: Boolean, change: (Boolean) -> Unit) {
+    private fun addRow(list: LinearLayout, packageName: String, text: String, on: Boolean, enabled: Boolean = true, change: (Boolean) -> Unit) {
         val icon = ImageView(this)
         icon.setImageDrawable(Lock.icon(this, packageName))
         val name = TextView(this)
@@ -490,8 +508,11 @@ class MainActivity : Activity() {
         switch.isChecked = on
         switch.contentDescription = name.text
         switch.setOnCheckedChangeListener { _, checked -> change(checked) }
-        switches.add(switch)
+        switch.isEnabled = enabled
+        // Only the rows that can change are re-enabled after a background step.
+        if (enabled) switches.add(switch)
         val row = LinearLayout(this)
+        if (!enabled) row.alpha = 0.38f
         row.gravity = Gravity.CENTER_VERTICAL
         row.setPadding(0, dp(8), 0, dp(8))
         row.addView(icon, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(16) })
@@ -500,13 +521,13 @@ class MainActivity : Activity() {
         list.addView(row)
     }
 
-    // The right code opens the list. Checking it is one hash, quick enough for the main thread.
+    // Checking the code is one hash, quick enough for the main thread.
     private fun openList() {
         val field = findViewById<EditText>(R.id.code)
         val right = Code.matches(this, field.text.toString())
         // The right code ends a recovery wait. A wait that has run out opens the list without the code.
         if (right) Code.cancelWait(this)
-        if (right || (Lock.recoveryMinutes(this) > 0 && Code.waitLeft(this) == 0L)) {
+        if (right || Code.waitLeft(this) == 0L) {
             listOpen = true
             getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(field.windowToken, 0)
         } else {
@@ -533,14 +554,12 @@ class MainActivity : Activity() {
         view.textSize = 24f
         view.setTextIsSelectable(true)
         view.setPadding(dp(24), dp(12), dp(24), 0)
-        // From New code in the list, it also says the current code stays until the new one is confirmed, and,
-        // in a user or with users Beeswax created, that each one's code is its own.
         val users = !deviceOwner || dpm.getSecondaryUsers(admin).isNotEmpty()
-        val message = listOfNotNull(
-            if (Lock.isLocked(this)) getString(R.string.new_code_message) else null,
-            if (Lock.isLocked(this) && users) getString(R.string.new_code_users) else null,
-            getString(R.string.code_message),
-        ).joinToString("\n\n")
+        val message = paragraphs(listOfNotNull(
+            if (Lock.isLocked(this)) getText(R.string.new_code_message) else null,
+            if (Lock.isLocked(this) && users) getText(R.string.new_code_users) else null,
+            getText(R.string.code_message),
+        ))
         show(AlertDialog.Builder(this)
             .setTitle(R.string.code_title)
             .setMessage(message)
@@ -573,8 +592,8 @@ class MainActivity : Activity() {
                     // A copy, so the background step gets the plan as it is now.
                     val plan = plan.toMap()
                     inBackground {
-                        if (fromList) Lock.newCode(this, code) else Lock.lock(this, code, plan)
-                        null
+                        if (fromList) Lock.newCode(this, code)
+                        if (fromList || Lock.lock(this, code, plan)) null else getString(R.string.lock_other_users)
                     }
                 } else {
                     Toast.makeText(this, R.string.code_mismatch, Toast.LENGTH_LONG).show()
@@ -585,10 +604,14 @@ class MainActivity : Activity() {
     }
 
     // Dialogs have their own windows, so each needs the screen's block on screenshots too.
-    fun show(builder: AlertDialog.Builder) {
-        val dialog = builder.create()
-        if (!Lock.isTestBuild(this)) dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        dialog.show()
+    // One at a time, so a double tap on a button doesn't leave two.
+    fun show(builder: AlertDialog.Builder) = show(builder.create())
+
+    private fun show(next: Dialog) {
+        dialog?.dismiss()
+        dialog = next
+        next.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        next.show()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -618,19 +641,25 @@ class MainActivity : Activity() {
         for (switch in switches) switch.isEnabled = enabled
     }
 
-    @Suppress("DEPRECATION") // Still the only way for a device owner to remove itself.
+    @Suppress("DEPRECATION") // Still the only way for a device or profile owner to remove itself.
     private fun confirmDeactivate() {
+        // In a user made by Create user, getText keeps the message's bold sentence.
+        val deactivateMessage = when {
+            !deviceOwner -> getText(R.string.deactivate_user_message)
+            dpm.getSecondaryUsers(admin).isEmpty() -> getString(R.string.deactivate_confirm_message)
+            else -> getString(R.string.deactivate_confirm_message) + "\n\n" + getString(R.string.deactivate_users)
+        }
         show(AlertDialog.Builder(this)
             .setTitle(R.string.deactivate_confirm_title)
-            .setMessage(R.string.deactivate_confirm_message)
+            .setMessage(deactivateMessage)
             .setPositiveButton(R.string.deactivate) { _, _ ->
                 if (Lock.isLocked(this) && !listOpen) return@setPositiveButton refresh()
                 try {
-                    // Only the device owner can unhide apps, so make sure nothing is left hidden
+                    // Only the device or profile owner can unhide apps, so nothing may be left hidden
                     // before giving that up.
                     Lock.unlock(this)
                     Code.clear(this)
-                    dpm.clearDeviceOwnerApp(packageName)
+                    if (deviceOwner) dpm.clearDeviceOwnerApp(packageName) else dpm.clearProfileOwner(admin)
                 } catch (e: Exception) {
                     val error = e.message ?: e.javaClass.simpleName
                     Toast.makeText(this, getString(R.string.deactivate_failed, error), Toast.LENGTH_LONG).show()

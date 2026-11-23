@@ -11,10 +11,9 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 
-// The About page, and the setup guide before setup. Each link shows its full address first and opens only on Open,
-// and only in an app that's allowed. With none (browsers blocked, no wallet), the address is copied instead.
-// Copy and that fallback copy an email or wallet address without its "mailto:" or "monero:", so it can be pasted.
-// Nothing here needs the code.
+// Each link shows its full address before it leaves Beeswax. Email and Monero addresses are shown without
+// "mailto:" or "monero:", exactly as Copy copies them. With no allowed app to open a link (browsers blocked,
+// no wallet), the address is copied instead, so it can be pasted.
 object About {
     private const val SITE = "https://beeswax.getflourish.org"
     private const val REPO = "https://github.com/flourish-today/Beeswax"
@@ -48,9 +47,14 @@ object About {
     }
 
     private fun confirm(activity: MainActivity, link: String) {
+        val title = when (Uri.parse(link).scheme) {
+            "mailto" -> R.string.email_title
+            "monero" -> R.string.wallet_title
+            else -> R.string.link_title
+        }
         activity.show(AlertDialog.Builder(activity)
-            .setTitle(R.string.link_title)
-            .setMessage(link)
+            .setTitle(title)
+            .setMessage(address(link))
             .setPositiveButton(R.string.link_open) { _, _ -> open(activity, link) }
             .setNeutralButton(R.string.link_copy) { _, _ -> copy(activity, link) }
             .setNegativeButton(android.R.string.cancel, null))
@@ -67,9 +71,10 @@ object About {
         }
     }
 
+    private fun address(link: String) = link.removePrefix("mailto:").removePrefix("monero:")
+
     // Android shows its own note when something is copied.
     private fun copy(activity: MainActivity, link: String) {
-        val text = link.removePrefix("mailto:").removePrefix("monero:")
-        activity.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null, text))
+        activity.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null, address(link)))
     }
 }

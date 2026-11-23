@@ -14,11 +14,14 @@ Open Beeswax, enter your lock code, tap Unlock and flip the app's switch. New ap
 
 ## What if I forget my lock code?
 
-To prevent losing access while preserving a strong lock, Beeswax offers a recovery wait. Turn it on in More settings while you still have your code. If you lose the code, tap Lost code to start the wait. When it ends, you can open the list without the code and set a new one. Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have.
+To prevent losing access while preserving a strong lock, Beeswax offers Lost code recovery. Turn it on in More settings while you still have your code. If you lose the code, tap Lost code to start the wait. When it ends, you can open the list without the code and set a new one.
+
+Without your lock code, you can't access new apps you install and can't access apps you've blocked. You can still export all your data and access the apps you already have.
 
 ## What doesn't work with Beeswax?
 
-- You can't use Private Spaces. Create other users through Beeswax, rather than Android Settings.
+- You can't use Private Spaces.
+- Create other users through Beeswax, rather than Android Settings.
 - Links that would open in a browser don't open while Beeswax is locked, unless you've allowed a browser.
 - Apps with a built-in browser, like a help link or an in-app browser, may still open websites. The vast majority of websites do not allow this and it's recommended against by Android.
 
@@ -32,7 +35,9 @@ Yes. This app was developed with Opus 5.5. Its code was reviewed with Opus 5.5 a
 
 ## Is Beeswax secure?
 
-Beeswax uses the intended way to restrict devices on Android. It's tiny, requests one permission, and only does what it says. See more info in [Privacy and security](PRIVACY.md). You can verify you got the real Beeswax APK using the [SHA256 Signing Certificate](PRIVACY.md#verifying-a-release), and verify that its source code matches the released APK through [reproducible builds](PRIVACY.md#reproducible-builds).
+Beeswax uses the intended way to restrict devices on Android. It's tiny, requests one permission, and only does what it says. See more info in [Privacy and security](PRIVACY.md).
+
+You can verify you got the real Beeswax APK using the [SHA256 Signing Certificate](PRIVACY.md#verifying-a-release), and verify that its source code matches the released APK through [reproducible builds](PRIVACY.md#reproducible-builds).
 
 ## Is Beeswax privacy respecting?
 

@@ -1,4 +1,4 @@
-<div align="center"><img src="downloads-images/icon.svg" alt="Beeswax icon" width="128" /></div>
+<div align="center"><img src="docs/images/icon.svg" alt="Beeswax icon" width="128" /></div>
 
 <h1 align="center">Beeswax</h1>
 
@@ -15,8 +15,8 @@
 <div align="center">
 <table>
   <tr>
-    <td><img src="downloads-images/before.webp" alt="App drawer before locking, with Brave, Instagram, Vanadium and YouTube" width="250" /></td>
-    <td><img src="downloads-images/after.webp" alt="App drawer after locking, without Brave, Instagram, Vanadium and YouTube" width="250" /></td>
+    <td><img src="docs/images/before.webp" alt="App drawer before locking, with Brave, Instagram, Vanadium and YouTube" width="250" /></td>
+    <td><img src="docs/images/after.webp" alt="App drawer after locking, without Brave, Instagram, Vanadium and YouTube" width="250" /></td>
   </tr>
   <tr>
     <td align="center">Before</td>
@@ -33,20 +33,20 @@
 - **Block any app** Pick any app, like Instagram or YouTube, and it disappears from your phone.
 - **Block browsers** Block any browser, even the built-in one that can't be uninstalled.
 - **Block new apps** Every app you install after locking is blocked to prevent bypassing.
-- **No easy bypass** Access requires the lock code, a factory reset, or a recovery wait you enabled beforehand.
+- **No easy bypass** Access requires the lock code, a factory reset, or Lost code recovery, if you turned it on beforehand.
 
-[More features](FEATURES.md)
+[More features](docs/FEATURES.md)
 
 ## What you need
 
-You need an Android phone running Android 13 or newer (tested on GrapheneOS and the stock Pixel OS on Android 17, and Xiaomi HyperOS on Android 16), and [ADB](https://developer.android.com/tools/releases/platform-tools) on a computer or on the phone itself ([setup guide](SETUP.md#connecting-adb)). Android only allows adding a device owner on a phone with no accounts, no other user profiles, and no Private Spaces, so you'll need to remove these if you have any of them. Alternatively a factory reset will always work. **Back up all important data off your device before you start.**
+You need an Android phone running Android 13 or newer (tested on GrapheneOS and the stock Pixel OS on Android 17, and Xiaomi HyperOS on Android 16), and [ADB](https://developer.android.com/tools/releases/platform-tools) on a computer or on the phone itself ([setup guide](docs/SETUP.md#connecting-adb)). Android only allows adding a device owner on a phone with no accounts, no other user profiles, and no Private Spaces, so you'll need to remove these if you have any of them. Alternatively a factory reset will always work. **Back up all important data off your device before you start.**
 
 
 <h2 align="center">Download</h2>
 
 <div align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/flourish-today/beeswax/releases"><img src="/downloads-images/badge_obtainium.png" alt="Get it on Obtainium" height="80" /></a>
-  <a href="https://github.com/flourish-today/Beeswax/releases/latest"><img src="/downloads-images/badge_github.png" alt="Get it on GitHub" height="80" /></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/flourish-today/beeswax/releases"><img src="/docs/images/badge_obtainium.png" alt="Get it on Obtainium" height="80" /></a>
+  <a href="https://github.com/flourish-today/Beeswax/releases/latest"><img src="/docs/images/badge_github.png" alt="Get it on GitHub" height="80" /></a>
 </div>
 
 <p align="center">Verify your download with <a href="https://github.com/soupslurpr/AppVerifier">AppVerifier</a>:</p>
@@ -63,13 +63,13 @@ F5:37:A3:91:23:40:95:AC:42:53:85:D4:9E:B0:AA:43:C8:ED:84:4D:FC:84:15:F2:1C:C4:BF
 3. Lock Beeswax and keep the lock code somewhere you can't easily reach.
 4. Use the code whenever you want to change which apps are blocked.
 
-See the [setup guide](SETUP.md) for the full steps.
+See the [setup guide](docs/SETUP.md) for the full steps.
 
 ## Learn more
 
 -   [Website](https://beeswax.getflourish.org)
--   [FAQ](FAQ.md)
--   [Privacy and security](PRIVACY.md)
+-   [FAQ](docs/FAQ.md)
+-   [Privacy and security](docs/PRIVACY.md)
 -   [GrapheneOS forum thread (shared with Odysseus)](https://discuss.grapheneos.org/d/42598-odysseus-make-your-grapheneos-a-dumbphone)
 -   [Issues](https://github.com/flourish-today/beeswax/issues)
 

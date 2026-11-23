@@ -6,13 +6,17 @@
     <!-- Lets Beeswax see, and so hide, every app. Android hides other apps from it otherwise. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
+    <!-- memtagMode: stock Android uses memory tagging only for apps that ask for it. GrapheneOS already uses
+         it for apps without native code, like Beeswax. -->
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="${appName}"
+        android:memtagMode="sync"
         android:theme="@android:style/Theme.DeviceDefault.DayNight">
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>

@@ -16,8 +16,8 @@ android {
         applicationId = "org.getflourish.beeswax"
         minSdk = 33
         targetSdk = 37
-        versionCode = 27
-        versionName = "1.03"
+        versionCode = 33
+        versionName = "1.04"
         manifestPlaceholders["appName"] = if (testBuild) "Beeswax Test" else "Beeswax"
     }
 
@@ -36,10 +36,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    lint {
-        checkReleaseBuilds = false
     }
 
     dependenciesInfo {

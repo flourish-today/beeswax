@@ -11,7 +11,7 @@ You need a phone with Android 13 or newer, and ADB on a computer or on the phone
     adb shell dpm set-device-owner org.getflourish.beeswax/.Receiver
     ```
     Beeswax now lists your apps.
-6.  **Turn off Developer options.** This also turns off ADB and is important for your device's security.
+6.  Beeswax turns off ADB and blocks Developer options as soon as you open it, so you don't need to turn them off yourself. If you need Developer options later, lock Beeswax, then turn on Allow developer options in More settings.
 7.  In Beeswax, switch off every app you want blocked.
 8.  Tap Lock, save the lock code, type it back and tap Lock again. Save it somewhere you can't easily get to, or give it to someone you trust.
 

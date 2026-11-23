@@ -77,13 +77,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
-            <TextView
-                android:id="@+id/lock_test_note"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/lock_test_note"
-                android:visibility="gone" />
-
             <!-- Shown as typed, so a long code copied from paper is easy to check. No suggestions and
                  no personalized learning, so the keyboard doesn't learn it. -->
             <org.getflourish.beeswax.CodeField
@@ -115,7 +108,7 @@
                     android:text="@string/about" />
             </LinearLayout>
 
-            <!-- Only when the recovery wait is turned on in More settings. Needs no code. -->
+            <!-- Only when Lost code recovery is turned on in More settings. Needs no code. -->
             <LinearLayout
                 android:id="@+id/recovery_row"
                 android:layout_width="match_parent"
@@ -261,17 +254,24 @@
                 android:text="@string/create_user" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/recovery_wait"
-                android:layout_width="wrap_content"
+            <Switch
+                android:id="@+id/recovery_switch"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp" />
+                android:layout_marginTop="24dp"
+                android:text="@string/recovery_switch" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/recovery_wait_note"
                 android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small" />
+
+            <!-- Only while Lost code recovery is on. -->
+            <Button
+                android:id="@+id/recovery_wait"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
         </LinearLayout>
 
         <!-- Schedule, opened from the open list. -->
@@ -295,11 +295,20 @@
                 android:text="@string/schedule"
                 android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium" />
 
-            <TextView
+            <!-- Off keeps the times, days and apps, and blocks none of them. -->
+            <Switch
+                android:id="@+id/schedule_switch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/schedule_note" />
+                android:text="@string/schedule_switch" />
+
+            <!-- Filled in by MainActivity, which says when blocked apps are left out. -->
+            <TextView
+                android:id="@+id/schedule_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -324,7 +333,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
-            <!-- The switch only in the Owner profile; in a user, the note while the clock isn't locked. -->
+            <!-- The switch and its note only in the Owner profile; in a user, a note says whether the clock is locked. -->
             <Switch
                 android:id="@+id/lock_date_time"
                 android:layout_width="match_parent"
@@ -333,11 +342,17 @@
                 android:text="@string/lock_date_time" />
 
             <TextView
+                android:id="@+id/lock_date_time_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/lock_date_time_note"
+                android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small" />
+
+            <TextView
                 android:id="@+id/schedule_clock_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/schedule_clock_note"
                 android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small" />
 
             <!-- Filled in by MainActivity. -->

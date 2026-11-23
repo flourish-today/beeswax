@@ -8,11 +8,9 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 
-// The lock code. The first Lock (or New code) makes a random code and shows it once, and the same
-// code is used until Deactivate or New code. Only a salted hash of it is kept, in Beeswax's
-// private storage, which Android won't let Settings clear for a device owner.
-// 16 characters from a 32-character alphabet is 80 random bits, far too many to guess, so there's
-// no limit on tries.
+// Only a salted hash of the code is kept, in Beeswax's private storage, which Android won't let Settings
+// clear for a device owner. 16 characters from a 32-character alphabet is 80 random bits, far too many to
+// guess, so there's no limit on tries.
 object Code {
     // Lowercase letters and digits, without 0, 1, l and o, which are easy to mix up.
     private const val ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
@@ -48,7 +46,6 @@ object Code {
         prefs(context).edit().clear().putString(SALT, salt).putString(HASH, hash).commit()
     }
 
-    // For checking a newly made code before it's saved.
     fun same(code: String, typed: String) = normalize(code) == normalize(typed)
 
     @Synchronized
@@ -56,7 +53,7 @@ object Code {
         prefs(context).edit().clear().commit()
     }
 
-    // The recovery wait, for a lost code. Off unless it's turned on in More settings, which needs the code.
+    // Lost code recovery is off unless it's turned on in More settings, which needs the code.
     @Synchronized
     fun startWait(context: Context, minutes: Int) {
         prefs(context).edit()

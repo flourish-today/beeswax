@@ -19,4 +19,4 @@ If you build a release yourself by following [Reproducible builds](PRIVACY.md#re
 
 ## Suggesting a change
 
--   Use the issue tracker.
+Use the issue tracker.

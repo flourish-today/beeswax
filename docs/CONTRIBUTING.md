@@ -2,16 +2,11 @@
 
 Thanks for your interest in contributing to Beeswax! ♡
 
-It's meant to stay small, so contributions are made through issues. Pull requests are off.
-
 ## Reporting a bug
 
-Open an [issue](https://github.com/flourish-today/beeswax/issues) with:
+Open an [issue](https://github.com/flourish-today/beeswax/issues) with relevant info.
 
--   Your phone model and GrapheneOS version
--   What you did, what you expected, and what happened
-
-For security-related issues, follow [SECURITY.md](SECURITY.md) instead of a public GitHub issue.
+For security-related issues, [SECURITY.md](SECURITY.md).
 
 ## Verifying a build
 
